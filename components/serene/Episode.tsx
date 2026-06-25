@@ -60,6 +60,14 @@ export default function Episode({ title, subtitle, videoUrl, imagePath, chapterN
             setIsPlaying(true)
             onPlay?.()
 
+            // Fire GTM event
+            window.dataLayer = window.dataLayer || []
+            window.dataLayer.push({
+                event: 'video_play',
+                video_chapter: chapterNumber,
+                video_title: title,
+            })
+
             // Scroll video into viewport when it starts playing
             if (containerRef.current) {
                 containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })

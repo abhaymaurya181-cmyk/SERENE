@@ -32,7 +32,7 @@ export default function Montage() {
                         {[1, 2, 3].map((i) => (
                             <div key={i} className="w-1/3 aspect-video bg-gray-800 rounded-lg overflow-hidden relative group">
                                 <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                                    style={{ backgroundImage: `url(/serene/${i}.jpeg)` }} />
+                                    style={{ backgroundImage: `url(https://pub-448c0393c0554348831f3e393b0c14c7.r2.dev/${i}.jpeg)` }} />
                                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                         ))}
@@ -43,7 +43,7 @@ export default function Montage() {
                         {[1, 2, 3].map((i) => (
                             <div key={i} className="w-1/3 aspect-video bg-gray-800 rounded-lg overflow-hidden relative group">
                                 <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                                    style={{ backgroundImage: `url(/serene/${i + 3}.jpeg)` }} />
+                                    style={{ backgroundImage: `url(https://pub-448c0393c0554348831f3e393b0c14c7.r2.dev/${i + 3}.jpeg)` }} />
                                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                         ))}

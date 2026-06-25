@@ -140,7 +140,7 @@ const AudioManager = forwardRef<AudioManagerRef, { forcePause?: boolean; autoPla
             <div className="fixed bottom-8 right-8 z-50">
                 <audio
                     ref={audioRef}
-                    src="/serene/music.mp3"
+                    src="https://pub-448c0393c0554348831f3e393b0c14c7.r2.dev/music.mp3"
                     loop
                     preload="auto"
                 />
