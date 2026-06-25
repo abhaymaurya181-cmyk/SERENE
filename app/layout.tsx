@@ -46,6 +46,43 @@ export const metadata: Metadata = {
     themeColor: '#000000',
 }
 
+const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+        {
+            '@type': 'WebSite',
+            '@id': 'https://abhaygrt.in/#website',
+            url: 'https://abhaygrt.in',
+            name: 'SERENE',
+            description: 'A love letter to cinema, Goa, and Jahangir Khan.',
+            author: {
+                '@type': 'Person',
+                name: 'Abhay',
+            },
+        },
+        {
+            '@type': 'CreativeWork',
+            '@id': 'https://abhaygrt.in/#creative-work',
+            name: 'SERENE — A Cinematic Experience',
+            description: 'An immersive cinematic journey through Dear Zindagi, exploring 10 chapters of healing, therapy, and self-discovery with Dr. Jahangir Khan.',
+            url: 'https://abhaygrt.in/serene',
+            creator: {
+                '@type': 'Person',
+                name: 'Abhay',
+            },
+            about: [
+                { '@type': 'Thing', name: 'Dear Zindagi' },
+                { '@type': 'Thing', name: 'Shah Rukh Khan' },
+                { '@type': 'Thing', name: 'Mental Health' },
+                { '@type': 'Thing', name: 'Cinema' },
+                { '@type': 'Thing', name: 'Goa' },
+            ],
+            image: 'https://pub-448c0393c0554348831f3e393b0c14c7.r2.dev/og-image.jpeg',
+            inLanguage: 'en',
+        },
+    ],
+}
+
 export default function RootLayout({
     children,
 }: {
@@ -57,6 +94,10 @@ export default function RootLayout({
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet" />
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
             </head>
             <body className="antialiased font-sans">
                 {/* GTM noscript fallback */}
