@@ -184,6 +184,7 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
     const [allPos, setAllPos]               = useState<Record<PosKey, Float32Array> | null>(null)
     const [isActive, setIsActive]           = useState(false)
     const [showSubtitle, setShowSubtitle]   = useState(false)
+    const [showNameText, setShowNameText]   = useState(true)
     const completedRef                      = useRef(false)
 
     useEffect(() => {
@@ -200,14 +201,19 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
     }, [isInView, allPos])
 
     const handleStepChange = (step: number) => {
-        // step 2 = holding DEAR ZINDAGI → show subtitle
+        // step 1 = particles start forming the name — hide text overlay
+        if (step === 1) setShowNameText(false)
+        // step 2 = holding JAHANGIR KHAN → show subtitle
         if (step === 2) {
             setTimeout(() => setShowSubtitle(true), 800)
         }
-        // step 99 = sequence complete
-        if (step === 99 && !completedRef.current) {
-            completedRef.current = true
-            onComplete?.()
+        // step 99 = sequence complete — show text overlay again for when user returns
+        if (step === 99) {
+            setShowNameText(true)
+            if (!completedRef.current) {
+                completedRef.current = true
+                onComplete?.()
+            }
         }
     }
 
@@ -227,6 +233,19 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
             </div>
 
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black pointer-events-none" />
+
+            <motion.div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                animate={{ opacity: showNameText ? 1 : 0 }}
+                transition={{ duration: 1.2 }}
+            >
+                <h1
+                    className="text-white text-4xl md:text-6xl tracking-[0.35em] uppercase pointer-events-none select-none"
+                    style={{ fontFamily: '"Cinzel", Georgia, serif', fontWeight: 700, textShadow: '0 0 40px rgba(168,200,255,0.4)' }}
+                >
+                    JAHANGIR KHAN
+                </h1>
+            </motion.div>
 
             <div className="absolute inset-0 flex items-end justify-center pb-20 pointer-events-none z-10">
                 <motion.p

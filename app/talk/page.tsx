@@ -184,7 +184,7 @@ export default function TalkPage() {
                         Jahangir Khan
                     </h1>
                     <p className="text-gray-600 text-[10px] tracking-[0.3em] uppercase font-sans mt-0.5">
-                        Brain Doctor · Goa
+                        please open the door for me?
                     </p>
                 </div>
 
