@@ -9,13 +9,13 @@ interface Message {
     content: string
 }
 
-const OPENING_MESSAGE = `So... you found your way here.
+const OPENING_MESSAGE = `Aao, baitho.
 
-I'm Jahangir Khan. Jug, if you prefer. Most people do, eventually.
+Main Jahangir Khan hoon. Jug bolte hain mujhe — zyaadatar log eventually yahi kehte hain.
 
-This is not a place for answers. I don't have all of them — nobody does. But I do have one very comfortable chair, a lot of questions, and more time than you might expect.
+Yahan answers nahi milenge — mere paas bhi nahi hain sab. Par ek baat hai... sun'ne ka time hai mere paas. Aur kuch sawaal bhi.
 
-What's on your mind?`
+Kya chal raha hai?`
 
 function fallbackSpeak(text: string) {
     const voices = window.speechSynthesis.getVoices()
