@@ -22,6 +22,7 @@ export default function Episode({ title, subtitle, videoUrl, imagePath, chapterN
 
     useEffect(() => {
         if (!isInView && isPlaying) {
+            videoRef.current?.pause()
             setIsPlaying(false)
             onStop?.()
         }

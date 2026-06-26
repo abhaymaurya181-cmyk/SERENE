@@ -1,215 +1,241 @@
 'use client'
 
-import { useRef, useMemo, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Points, PointMaterial } from '@react-three/drei'
 import { useInView, motion } from 'framer-motion'
 import * as THREE from 'three'
 
-function StarText({ isInView }: { isInView: boolean }) {
-    const ref = useRef<THREE.Points>(null)
-    const [targetPos, setTargetPos] = useState<Float32Array | null>(null)
-    const [startPos, setStartPos] = useState<Float32Array | null>(null)
-    const [colors, setColors] = useState<Float32Array | null>(null)
-    const [animStart, setAnimStart] = useState<number | null>(null)
-    const [done, setDone] = useState(false)
+const N = 2500
+
+/* ── position builders ── */
+
+function buildText(text: string, fontSize = 160): Float32Array {
+    const W = 1800, H = 340
+    const cvs = document.createElement('canvas')
+    cvs.width = W; cvs.height = H
+    const ctx = cvs.getContext('2d')!
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H)
+    ctx.font = `bold ${fontSize}px "Cinzel", Georgia, serif`
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText(text, W / 2, H / 2)
+    const d = ctx.getImageData(0, 0, W, H).data
+    const pts: [number, number][] = []
+    for (let y = 0; y < H; y += 3)
+        for (let x = 0; x < W; x += 3)
+            if ((d[(y * W + x) * 4] + d[(y * W + x) * 4 + 1] + d[(y * W + x) * 4 + 2]) / 3 > 80)
+                pts.push([x, y])
+    const pos = new Float32Array(N * 3)
+    for (let i = 0; i < N; i++) {
+        const [cx, cy] = pts.length ? pts[Math.floor(Math.random() * pts.length)] : [W / 2, H / 2]
+        pos[i * 3]     = (cx / W - 0.5) * 8.8
+        pos[i * 3 + 1] = -(cy / H - 0.5) * 1.7
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 0.2
+    }
+    return pos
+}
+
+function buildScatter(): Float32Array {
+    const pos = new Float32Array(N * 3)
+    for (let i = 0; i < N; i++) {
+        const a = Math.random() * Math.PI * 2
+        const d = 2.5 + Math.random() * 9
+        pos[i * 3]     = Math.cos(a) * d * 1.4
+        pos[i * 3 + 1] = Math.sin(a) * d
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 6
+    }
+    return pos
+}
+
+/* ── easing ── */
+const easeOut = (t: number) => 1 - Math.pow(1 - Math.min(t, 1), 3)
+const easeIn  = (t: number) => Math.min(t, 1) ** 3
+
+/* ── sequence ── */
+type PosKey = 'scatter' | 'dearZindagi'
+type Mode   = 'galaxy' | 'form' | 'breathe' | 'scatter'
+
+const STEPS: { from: PosKey; to: PosKey; dur: number; fn: (t: number) => number; mode: Mode }[] = [
+    { from: 'scatter',     to: 'scatter',     dur: 2,   fn: easeOut, mode: 'galaxy'  },
+    { from: 'scatter',     to: 'dearZindagi', dur: 4,   fn: easeOut, mode: 'form'    },
+    { from: 'dearZindagi', to: 'dearZindagi', dur: 3,   fn: easeOut, mode: 'breathe' },
+    { from: 'dearZindagi', to: 'scatter',     dur: 1.5, fn: easeIn,  mode: 'scatter' },
+]
+
+/* ── particle mesh ── */
+function Particles({
+    allPos,
+    isActive,
+    onStepChange,
+}: {
+    allPos: Record<PosKey, Float32Array>
+    isActive: boolean
+    onStepChange: (step: number) => void
+}) {
+    const meshRef    = useRef<THREE.Points>(null)
+    const stepRef    = useRef(-1)
+    const startMsRef = useRef(0)
+    const firedRef   = useRef(-1)
+    const cbRef      = useRef(onStepChange)
+    useEffect(() => { cbRef.current = onStepChange }, [onStepChange])
 
     useEffect(() => {
-        const cvs = document.createElement('canvas')
-        const ctx = cvs.getContext('2d')
-        if (!ctx) return
-
-        const W = 1800
-        const H = 340
-        cvs.width = W
-        cvs.height = H
-
-        ctx.fillStyle = '#000000'
-        ctx.fillRect(0, 0, W, H)
-
-        // Draw SERENE in the same Cinzel serif font as the rest of the site
-        ctx.font = 'bold 220px "Cinzel", Georgia, serif'
-        ctx.fillStyle = '#ffffff'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText('SERENE', W / 2, H / 2)
-
-        const pixels = ctx.getImageData(0, 0, W, H)
-        const d = pixels.data
-        const targets: number[] = []
-        const starts: number[] = []
-        const cols: number[] = []
-        const STEP = 3
-
-        for (let y = 0; y < H; y += STEP) {
-            for (let x = 0; x < W; x += STEP) {
-                const i = (y * W + x) * 4
-                const lum = (d[i] + d[i + 1] + d[i + 2]) / 3
-
-                if (lum > 80) {
-                    // Map text to 3D: camera fov=55 z=5 → visible x ±4.63, y ±2.6
-                    // Text spans x ±4.4 (fills width), y ±0.85 (text height centered)
-                    targets.push(
-                        (x / W - 0.5) * 8.8,
-                        -(y / H - 0.5) * 1.7,
-                        (lum / 255) * 0.3
-                    )
-
-                    // Start: scattered as a galaxy ring around center
-                    const angle = Math.random() * Math.PI * 2
-                    const dist = 2.5 + Math.random() * 9
-                    starts.push(
-                        Math.cos(angle) * dist * 1.4,
-                        Math.sin(angle) * dist,
-                        (Math.random() - 0.5) * 6
-                    )
-
-                    // Star color: bright white-blue, slight variation per star
-                    const v = 0.75 + Math.random() * 0.25
-                    cols.push(v * 0.85, v * 0.92, v)
-                }
-            }
+        if (isActive && stepRef.current === -1) {
+            stepRef.current = 0
+            startMsRef.current = Date.now()
         }
-
-        console.log(`[Galaxy] Text particles: ${targets.length / 3}`)
-        setTargetPos(new Float32Array(targets))
-        setStartPos(new Float32Array(starts))
-        setColors(new Float32Array(cols))
-    }, [])
-
-    useEffect(() => {
-        if (isInView && !animStart && !done && targetPos) {
-            const t = setTimeout(() => setAnimStart(Date.now()), 800)
-            return () => clearTimeout(t)
-        }
-    }, [isInView, animStart, done, targetPos])
+    }, [isActive])
 
     useFrame(({ clock }) => {
-        if (!ref.current || !targetPos || !startPos) return
-        const pos = ref.current.geometry.attributes.position.array as Float32Array
-        const t = clock.elapsedTime
+        if (!meshRef.current || stepRef.current < 0) return
+        const step = STEPS[stepRef.current]
+        if (!step) return
 
-        if (done) {
-            // Text formed — hold with gentle breathing glow
-            for (let i = 0; i < pos.length; i += 3) {
-                const ph = i * 0.0008
-                pos[i]     = targetPos[i]     + Math.sin(t * 0.5 + ph) * 0.003
-                pos[i + 1] = targetPos[i + 1] + Math.cos(t * 0.4 + ph) * 0.003
-                pos[i + 2] = targetPos[i + 2]
+        const pos     = meshRef.current.geometry.attributes.position.array as Float32Array
+        const t       = clock.elapsedTime
+        const elapsed = (Date.now() - startMsRef.current) / 1000
+        const raw     = elapsed / step.dur
+        const p       = step.fn(raw)
+        const A       = allPos[step.from]
+        const B       = allPos[step.to]
+
+        switch (step.mode) {
+            case 'galaxy':
+                for (let i = 0; i < N; i++) {
+                    const ph = i * 0.003
+                    const sx = ((A[i * 3] % 10) + 10) % 10 - 5
+                    const sy = ((A[i * 3 + 1] % 6) + 6) % 6 - 3
+                    pos[i * 3]     = sx + Math.sin(t * 0.12 + ph) * 0.25
+                    pos[i * 3 + 1] = sy + Math.cos(t * 0.10 + ph) * 0.25
+                    pos[i * 3 + 2] = A[i * 3 + 2]
+                }
+                break
+            case 'breathe':
+                for (let i = 0; i < N; i++) {
+                    const ph = i * 0.001
+                    pos[i * 3]     = B[i * 3]     + Math.sin(t * 0.5 + ph) * 0.004
+                    pos[i * 3 + 1] = B[i * 3 + 1] + Math.cos(t * 0.4 + ph) * 0.004
+                    pos[i * 3 + 2] = B[i * 3 + 2]
+                }
+                break
+            default:
+                for (let i = 0; i < N; i++) {
+                    pos[i * 3]     = A[i * 3]     + (B[i * 3]     - A[i * 3])     * p
+                    pos[i * 3 + 1] = A[i * 3 + 1] + (B[i * 3 + 1] - A[i * 3 + 1]) * p
+                    pos[i * 3 + 2] = A[i * 3 + 2] + (B[i * 3 + 2] - A[i * 3 + 2]) * p
+                }
+        }
+
+        meshRef.current.geometry.attributes.position.needsUpdate = true
+
+        if (raw >= 1 && stepRef.current < STEPS.length - 1) {
+            stepRef.current++
+            startMsRef.current = Date.now()
+            if (firedRef.current !== stepRef.current) {
+                firedRef.current = stepRef.current
+                cbRef.current(stepRef.current)
             }
-            ref.current.geometry.attributes.position.needsUpdate = true
-            return
-        }
-
-        if (!animStart) {
-            // Idle: galaxy ring drifts gently, visible as starfield
-            for (let i = 0; i < pos.length; i += 3) {
-                const ph = i * 0.003
-                // Fold into visible range
-                const sx = ((startPos[i] % 10) + 10) % 10 - 5
-                const sy = ((startPos[i + 1] % 6) + 6) % 6 - 3
-                pos[i]     = sx + Math.sin(t * 0.12 + ph) * 0.25
-                pos[i + 1] = sy + Math.cos(t * 0.10 + ph) * 0.25
-                pos[i + 2] = startPos[i + 2]
+        } else if (raw >= 1 && stepRef.current === STEPS.length - 1) {
+            if (firedRef.current !== 99) {
+                firedRef.current = 99
+                cbRef.current(99)
             }
-            ref.current.geometry.attributes.position.needsUpdate = true
-            return
         }
-
-        // Stars converge → form SERENE text  — cubic ease-out over 4.5s
-        const elapsed = (Date.now() - animStart) / 1000
-        const progress = Math.min(elapsed / 4.5, 1)
-        const ease = 1 - Math.pow(1 - progress, 3)
-
-        if (progress >= 1) setDone(true)
-
-        for (let i = 0; i < pos.length; i++) {
-            pos[i] = startPos[i] + (targetPos[i] - startPos[i]) * ease
-        }
-        ref.current.geometry.attributes.position.needsUpdate = true
     })
 
-    if (!startPos || !colors) return null
-
     return (
-        <Points key={startPos.length} ref={ref} positions={startPos} colors={colors} stride={3} frustumCulled={false}>
+        <Points ref={meshRef} positions={allPos.scatter.slice()} stride={3} frustumCulled={false}>
             <PointMaterial
                 transparent
-                vertexColors
-                size={0.02}
+                color="#a8c8ff"
+                size={0.022}
                 sizeAttenuation
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
-                opacity={1}
+                opacity={0.9}
             />
         </Points>
     )
 }
 
 function BackgroundStars() {
-    const count = 2500
     const positions = useMemo(() => {
-        const pos = new Float32Array(count * 3)
-        for (let i = 0; i < count; i++) {
+        const pos = new Float32Array(2000 * 3)
+        for (let i = 0; i < 2000; i++) {
             pos[i * 3]     = (Math.random() - 0.5) * 30
             pos[i * 3 + 1] = (Math.random() - 0.5) * 20
             pos[i * 3 + 2] = (Math.random() - 0.5) * 20 - 8
         }
         return pos
     }, [])
-
     const ref = useRef<THREE.Points>(null)
-    useFrame(() => {
-        if (ref.current) ref.current.rotation.z += 0.00006
-    })
-
+    useFrame(() => { if (ref.current) ref.current.rotation.z += 0.00005 })
     return (
         <Points ref={ref} positions={positions} stride={3} frustumCulled={false}>
-            <PointMaterial transparent color="#7799ff" size={0.006} sizeAttenuation depthWrite={false} opacity={0.4} />
+            <PointMaterial transparent color="#7799ff" size={0.005} sizeAttenuation depthWrite={false} opacity={0.35} />
         </Points>
     )
 }
 
-interface GalaxyProps {
-    onComplete?: () => void
-}
-
-export default function Galaxy({ onComplete }: GalaxyProps) {
-    const containerRef = useRef<HTMLDivElement>(null)
-    const isInView = useInView(containerRef, { amount: 0.3, once: false })
-    const [hasCalledComplete, setHasCalledComplete] = useState(false)
+/* ── main export ── */
+export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
+    const containerRef                      = useRef<HTMLDivElement>(null)
+    const isInView                          = useInView(containerRef, { amount: 0.3, once: false })
+    const [allPos, setAllPos]               = useState<Record<PosKey, Float32Array> | null>(null)
+    const [isActive, setIsActive]           = useState(false)
+    const [showSubtitle, setShowSubtitle]   = useState(false)
+    const completedRef                      = useRef(false)
 
     useEffect(() => {
-        if (!hasCalledComplete && onComplete) {
-            const timer = setTimeout(() => {
-                setHasCalledComplete(true)
-                onComplete()
-            }, 8000)
-            return () => clearTimeout(timer)
+        document.fonts.ready.then(() => {
+            setAllPos({
+                scatter:      buildScatter(),
+                dearZindagi:  buildText('JAHANGIR KHAN', 120),
+            })
+        })
+    }, [])
+
+    useEffect(() => {
+        if (isInView && allPos) setIsActive(true)
+    }, [isInView, allPos])
+
+    const handleStepChange = (step: number) => {
+        // step 2 = holding DEAR ZINDAGI → show subtitle
+        if (step === 2) {
+            setTimeout(() => setShowSubtitle(true), 800)
         }
-    }, [hasCalledComplete, onComplete])
+        // step 99 = sequence complete
+        if (step === 99 && !completedRef.current) {
+            completedRef.current = true
+            onComplete?.()
+        }
+    }
 
     return (
         <div ref={containerRef} className="w-full h-screen bg-black relative overflow-hidden snap-start">
             <div className="absolute inset-0 z-0">
-                <Canvas camera={{ position: [0, 0, 5], fov: 55 }}>
-                    <StarText isInView={isInView} />
-                    <BackgroundStars />
-                </Canvas>
+                {allPos && (
+                    <Canvas camera={{ position: [0, 0, 5], fov: 55 }}>
+                        <BackgroundStars />
+                        <Particles
+                            allPos={allPos}
+                            isActive={isActive}
+                            onStepChange={handleStepChange}
+                        />
+                    </Canvas>
+                )}
             </div>
 
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black pointer-events-none" />
 
-            {/* Subtitle fades in after text forms */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="absolute inset-0 flex items-end justify-center pb-20 pointer-events-none z-10">
                 <motion.p
                     initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 5.5, duration: 2 }}
-                    className="text-gray-400 tracking-[0.5em] text-xs md:text-sm uppercase font-sans mt-40"
+                    animate={{ opacity: showSubtitle ? 1 : 0 }}
+                    transition={{ duration: 2 }}
+                    className="text-gray-500 tracking-[0.4em] text-xs uppercase font-sans italic"
                 >
-                    A love letter to cinema, Goa, and Jahangir Khan
+                    from the epiglottis
                 </motion.p>
             </div>
         </div>
