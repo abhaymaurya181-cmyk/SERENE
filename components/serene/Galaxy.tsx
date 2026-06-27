@@ -243,7 +243,7 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
                     className="text-white text-4xl md:text-6xl tracking-[0.35em] uppercase pointer-events-none select-none"
                     style={{ fontFamily: '"Cinzel", Georgia, serif', fontWeight: 700, textShadow: '0 0 40px rgba(168,200,255,0.4)' }}
                 >
-                    JAHANGIR KHAN
+                    DEAR ZINDAGI
                 </h1>
             </motion.div>
 
@@ -254,7 +254,7 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
                     transition={{ duration: 2 }}
                     className="text-gray-500 tracking-[0.4em] text-xs uppercase font-sans italic"
                 >
-                    from the epiglottis
+                    some stories stay with you
                 </motion.p>
             </div>
         </div>
