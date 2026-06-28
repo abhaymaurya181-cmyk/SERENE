@@ -10,15 +10,18 @@ const N = 2500
 
 /* ── position builders ── */
 
-function buildText(text: string, fontSize = 160): Float32Array {
-    const W = 1800, H = 340
+function buildText(lines: string[], fontSize = 120): Float32Array {
+    const W = 1800, lineH = 340
+    const H = lineH * lines.length
     const cvs = document.createElement('canvas')
     cvs.width = W; cvs.height = H
     const ctx = cvs.getContext('2d')!
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H)
     ctx.font = `bold ${fontSize}px "Cinzel", Georgia, serif`
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillText(text, W / 2, H / 2)
+    lines.forEach((line, i) => {
+        ctx.fillText(line, W / 2, lineH * (i + 0.5))
+    })
     const d = ctx.getImageData(0, 0, W, H).data
     const pts: [number, number][] = []
     for (let y = 0; y < H; y += 3)
@@ -29,7 +32,7 @@ function buildText(text: string, fontSize = 160): Float32Array {
     for (let i = 0; i < N; i++) {
         const [cx, cy] = pts.length ? pts[Math.floor(Math.random() * pts.length)] : [W / 2, H / 2]
         pos[i * 3]     = (cx / W - 0.5) * 8.8
-        pos[i * 3 + 1] = -(cy / H - 0.5) * 1.7
+        pos[i * 3 + 1] = -(cy / H - 0.5) * (1.7 * lines.length)
         pos[i * 3 + 2] = (Math.random() - 0.5) * 0.2
     }
     return pos
@@ -191,7 +194,7 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
         document.fonts.ready.then(() => {
             setAllPos({
                 scatter:      buildScatter(),
-                dearZindagi:  buildText('JAHANGIR KHAN', 120),
+                dearZindagi:  buildText(['JAHANGIR', 'KHAN'], 120),
             })
         })
     }, [])
@@ -240,7 +243,7 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
                 transition={{ duration: 1.2 }}
             >
                 <h1
-                    className="text-white text-4xl md:text-6xl tracking-[0.35em] uppercase pointer-events-none select-none"
+                    className="text-white text-4xl md:text-6xl tracking-[0.35em] uppercase pointer-events-none select-none text-center w-full pl-[0.35em]"
                     style={{ fontFamily: '"Cinzel", Georgia, serif', fontWeight: 700, textShadow: '0 0 40px rgba(168,200,255,0.4)' }}
                 >
                     DEAR ZINDAGI
