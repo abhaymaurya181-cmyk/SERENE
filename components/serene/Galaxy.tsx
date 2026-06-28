@@ -10,7 +10,7 @@ const N = 2500
 
 /* ── position builders ── */
 
-function buildText(lines: string[], fontSize = 120, xScale = 8.8): Float32Array {
+function buildText(lines: string[], fontSize = 120, fillWidth?: number): Float32Array {
     const W = 1800, lineH = 340
     const H = lineH * lines.length
     const cvs = document.createElement('canvas')
@@ -18,6 +18,12 @@ function buildText(lines: string[], fontSize = 120, xScale = 8.8): Float32Array 
     const ctx = cvs.getContext('2d')!
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H)
     ctx.font = `bold ${fontSize}px "Cinzel", Georgia, serif`
+
+    // Measure the widest line so we can map it exactly to fillWidth in 3D units.
+    // xScale is the scale of the full canvas; text only has particles where pixels are lit.
+    const maxPx = Math.max(...lines.map(l => ctx.measureText(l).width))
+    const xScale = fillWidth != null ? (fillWidth * W) / maxPx : 8.8
+
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     lines.forEach((line, i) => {
         ctx.fillText(line, W / 2, lineH * (i + 0.5))
@@ -192,14 +198,16 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
 
     useEffect(() => {
         document.fonts.ready.then(() => {
-            // Compute x-scale to fit within the camera's visible width at any aspect ratio.
-            // Camera: z=5, vertical fov=55°. Visible width = visible height × aspect.
-            const aspect = window.innerWidth / window.innerHeight
-            const visibleW = 2 * 5 * Math.tan((55 * Math.PI) / 360) * aspect
-            const xScale = Math.min(8.8, visibleW * 0.88)
+            // On portrait mobile the canvas is narrow, so compute fillWidth from the
+            // camera's actual visible width so the widest word spans ~92% of the screen.
+            // Camera: z=5, vertical fov=55°. visibleW = visibleH × aspect.
+            const isPortrait = window.innerWidth < window.innerHeight
+            const fillWidth = isPortrait
+                ? 2 * 5 * Math.tan((55 * Math.PI) / 360) * (window.innerWidth / window.innerHeight) * 0.92
+                : undefined // desktop keeps the default xScale=8.8
             setAllPos({
                 scatter:      buildScatter(),
-                dearZindagi:  buildText(['JAHANGIR', 'KHAN'], 120, xScale),
+                dearZindagi:  buildText(['JAHANGIR', 'KHAN'], 120, fillWidth),
             })
         })
     }, [])
