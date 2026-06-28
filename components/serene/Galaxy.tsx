@@ -10,7 +10,7 @@ const N = 2500
 
 /* ── position builders ── */
 
-function buildText(lines: string[], fontSize = 120): Float32Array {
+function buildText(lines: string[], fontSize = 120, xScale = 8.8): Float32Array {
     const W = 1800, lineH = 340
     const H = lineH * lines.length
     const cvs = document.createElement('canvas')
@@ -31,7 +31,7 @@ function buildText(lines: string[], fontSize = 120): Float32Array {
     const pos = new Float32Array(N * 3)
     for (let i = 0; i < N; i++) {
         const [cx, cy] = pts.length ? pts[Math.floor(Math.random() * pts.length)] : [W / 2, H / 2]
-        pos[i * 3]     = (cx / W - 0.5) * 8.8
+        pos[i * 3]     = (cx / W - 0.5) * xScale
         pos[i * 3 + 1] = -(cy / H - 0.5) * (1.7 * lines.length)
         pos[i * 3 + 2] = (Math.random() - 0.5) * 0.2
     }
@@ -192,9 +192,14 @@ export default function Galaxy({ onComplete }: { onComplete?: () => void }) {
 
     useEffect(() => {
         document.fonts.ready.then(() => {
+            // Compute x-scale to fit within the camera's visible width at any aspect ratio.
+            // Camera: z=5, vertical fov=55°. Visible width = visible height × aspect.
+            const aspect = window.innerWidth / window.innerHeight
+            const visibleW = 2 * 5 * Math.tan((55 * Math.PI) / 360) * aspect
+            const xScale = Math.min(8.8, visibleW * 0.88)
             setAllPos({
                 scatter:      buildScatter(),
-                dearZindagi:  buildText(['JAHANGIR', 'KHAN'], 120),
+                dearZindagi:  buildText(['JAHANGIR', 'KHAN'], 120, xScale),
             })
         })
     }, [])
